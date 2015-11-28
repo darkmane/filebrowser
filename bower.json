@@ -24,9 +24,10 @@
   "dependencies": {
     "paper-dialog": "PolymerElements/paper-dialog#~1.0.3",
     "polymer": "Polymer/polymer#~1.2.3",
-    "google-apis": "~1.1.3",
-    "google-signin": "~1.2.0",
-    "paper-tabs": "PolymerElements/paper-tabs#~1.1.0"
+    "google-apis": "GoogleWebComponents/google-apis#~1.1.3",
+    "google-signin": "GoogleWebComponents/google-signin#~1.2.0",
+    "paper-tabs": "PolymerElements/paper-tabs#~1.1.0",
+    "iron-pages": "PolymerElements/iron-pages#~1.0.4"
   },
   "resolutions": {
     "polymer": "^1.2.0",

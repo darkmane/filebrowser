@@ -1,0 +1,36 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<dom-module id="file-extension">
+
+    <style>
+
+    </style>
+
+    <template>
+        <option value="{{extension}}">{{displayName}}</option>
+    </template>
+
+    <script>
+
+
+        FileBrowser = Polymer({
+            is: 'file-extension',
+            properties: {
+                extension: {type: String, reflectToAttribute: true},
+                displayName: {type: String, reflectToAttribute: true}
+
+            },
+
+
+
+            ready: function () {
+                console.log(this.extension);
+
+            },
+
+
+        });
+
+    </script>
+
+</dom-module>

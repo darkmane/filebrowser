@@ -1,0 +1,96 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../paper-tabs/paper-tabs.html">
+<link rel="import" href="file-extension.html">
+
+<dom-module id="file-browser">
+
+    <style>
+
+    </style>
+
+    <template>
+        <paper-tabs selected="{{_selected}}">
+            <paper-tab>Local</paper-tab>
+            <paper-tab>Google</paper-tab>
+
+        </paper-tabs>
+        <iron-pages selected="{{_selected}}">
+            <div>Local</div>
+            <div id="google_drive_list">
+                <template is="dom-if" if="{{google_authenticated}}">
+                    <google-signin width="iconOnly" scopes="https://www.googleapis.com/auth/drive"></google-signin>
+                </template>
+                <google-client-loader id="gdrive_api" api="drive.files.list"></google-client-loader>
+
+            </div>
+        </iron-pages>
+        <div id="file-list">
+            <template id="" is="dom-repeat" items="{{currentFiles}}">
+                <span><img src="{{item.icon}}"/><span>{{item.fileName}}</span></span>
+            </template>
+        </div>
+        <select id="fileExtension">
+            <content select="*"></content>
+            <option selected value="hdc">Hero System Character</option>
+        </select>
+    </template>
+
+    <script>
+
+
+        FileBrowser = Polymer({
+            is: 'file-browser',
+            properties: {
+                currentFiles: {
+                    type: Array,
+                    value: function () {
+                        return [];
+                    }
+                },
+                google_authenticated: {
+                    type: Boolean,
+                    computed: '_compute_google_authenticated()'
+                }
+            },
+
+
+            ready: function () {
+                var drive = this.$.gdrive_api;
+                drive.addEventListener('google-api-load', this._start_google_file_lookup);
+                drive.addEventListener('google-api-load-error', this._google_api_load_error)
+
+            },
+
+            _start_google_file_lookup: function (event) {
+                var fileSearch = drive.api.url.get({
+                    q: "fileExtension = '" + this.$.fileExtension.value + "'"
+                });
+
+                fileSearch.execute(function (resp) {
+                    resp.body.items.forEach(function (item) {
+                        var newFile = {
+                            icon: item.iconLink,
+                            fileName: item.originalFilename
+                        };
+                        this.currentFiles.push(newFile);
+                    });
+                });
+            },
+            _compute_google_authenticated: function(){
+                return this.$.gdrive_api.signedIn && !this.$.gdrive_api.needAdditionalAuth;
+            },
+            _google_api_load_error: function (event) {
+                if (event.error.code == 401) {
+                    checkAuth();
+                } else {
+                    console.log("Error");
+
+                }
+            },
+
+
+        });
+
+    </script>
+
+</dom-module>
