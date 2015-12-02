@@ -7,28 +7,24 @@
     </style>
 
     <template>
-        <option value="{{extension}}">{{displayName}}</option>
+        <!--<span>"{{extension}}"</span><span>{{display_name}}</span>-->
+        <option value="{{extension}}">{{display_name}}</option>
+
     </template>
 
     <script>
 
-
         FileBrowser = Polymer({
             is: 'file-extension',
             properties: {
-                extension: {type: String, reflectToAttribute: true},
-                displayName: {type: String, reflectToAttribute: true}
+                extension: {type: String, notify: true},
+                display_name: {type: String, notify: true}
 
             },
-
-
 
             ready: function () {
-                console.log(this.extension);
 
             },
-
-
         });
 
     </script>

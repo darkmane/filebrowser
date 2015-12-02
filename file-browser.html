@@ -1,5 +1,8 @@
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../paper-tabs/paper-tabs.html">
+<link rel="import" href="../iron-pages/iron-pages.html">
+<link rel="import" href="../google-apis/google-client-loader.html">
+<link rel="import" href="../google-signin/google-signin.html">
 <link rel="import" href="file-extension.html">
 
 <dom-module id="file-browser">
@@ -17,11 +20,18 @@
         <iron-pages selected="{{_selected}}">
             <div>Local</div>
             <div id="google_drive_list">
-                <template is="dom-if" if="{{google_authenticated}}">
-                    <google-signin width="iconOnly" scopes="https://www.googleapis.com/auth/drive"></google-signin>
+                Google
+                <!--<template is="dom-if" if="{{google_authenticated}}">-->
+                <google-signin width="iconOnly"
+                               clientId="{{google_client_id}}"
+                               scopes="https://www.googleapis.com/auth/drive"></google-signin>
+                <!--</template>-->
+                <template id="file_list_api" is="dom-bind">
+                    <google-client-loader id="gdrive_api"
+                                          api="drive.files.list"
+                                          on-google-api-load="_start_google_file_lookup"
+                                          on-google-api-load-error="_google_load_error"></google-client-loader>
                 </template>
-                <google-client-loader id="gdrive_api" api="drive.files.list"></google-client-loader>
-
             </div>
         </iron-pages>
         <div id="file-list">
@@ -29,8 +39,9 @@
                 <span><img src="{{item.icon}}"/><span>{{item.fileName}}</span></span>
             </template>
         </div>
+        <content select="*"></content>
         <select id="fileExtension">
-            <content select="*"></content>
+
             <option selected value="hdc">Hero System Character</option>
         </select>
     </template>
@@ -50,18 +61,28 @@
                 google_authenticated: {
                     type: Boolean,
                     computed: '_compute_google_authenticated()'
+                },
+                _selected: {type: Number, value: 0},
+                google_client_id: {
+                    type: String,
+                    reflectToAttribute: true
                 }
             },
 
-
             ready: function () {
-                var drive = this.$.gdrive_api;
-                drive.addEventListener('google-api-load', this._start_google_file_lookup);
-                drive.addEventListener('google-api-load-error', this._google_api_load_error)
-
+                var drive = this.$.file_list_api;
+                drive._start_google_file_lookup = this._start_google_file_lookup;
+                drive._google_load_error = this._google_api_load_error
+                drive.addEventListener('google-api-load', function (event) {
+                    console.log("Success:: " + event)
+                });
+                drive.addEventListener('google-api-load-error', function (event) {
+                    console.log("Failure:: " + event)
+                })
             },
 
             _start_google_file_lookup: function (event) {
+                console.log("File Lookup started");
                 var fileSearch = drive.api.url.get({
                     q: "fileExtension = '" + this.$.fileExtension.value + "'"
                 });
@@ -76,19 +97,18 @@
                     });
                 });
             },
-            _compute_google_authenticated: function(){
+            _compute_google_authenticated: function () {
+                console.log("Authenticated");
                 return this.$.gdrive_api.signedIn && !this.$.gdrive_api.needAdditionalAuth;
             },
             _google_api_load_error: function (event) {
+                console.log("Error");
                 if (event.error.code == 401) {
                     checkAuth();
                 } else {
                     console.log("Error");
-
                 }
             },
-
-
         });
 
     </script>
