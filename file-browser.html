@@ -1,7 +1,7 @@
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../paper-tabs/paper-tabs.html">
 <link rel="import" href="../iron-pages/iron-pages.html">
-<link rel="import" href="../google-apis/google-client-loader.html">
+<link rel="import" href="../google-apis/google-apis.html">
 <link rel="import" href="../google-signin/google-signin.html">
 <link rel="import" href="file-extension.html">
 
@@ -21,16 +21,21 @@
             <div>Local</div>
             <div id="google_drive_list">
                 Google
-                <!--<template is="dom-if" if="{{google_authenticated}}">-->
+
                 <google-signin width="iconOnly"
-                               clientId="{{google_client_id}}"
-                               scopes="https://www.googleapis.com/auth/drive"></google-signin>
-                <!--</template>-->
-                <template id="file_list_api" is="dom-bind">
+                    client-id="{{google_client_id}}"
+                    scopes="https://www.googleapis.com/auth/drive"
+                    on-google-signin-aware-success="_set_authenticated_state"
+                    on-google-signed-out="_set_authenticated_state"></google-signin>
+
+
+
+                <template id="file_list_api" is="dom-if" if="{{_google_authenticated}}">
+                    Authenticated
                     <google-client-loader id="gdrive_api"
-                                          api="drive.files.list"
-                                          on-google-api-load="_start_google_file_lookup"
-                                          on-google-api-load-error="_google_load_error"></google-client-loader>
+                        name="drive" version="v2"
+                        on-google-api-load="_first_google_file_lookup"
+                        on-google-api-load-error="_google_api_load_error"></google-client-loader>
                 </template>
             </div>
         </iron-pages>
@@ -39,10 +44,10 @@
                 <span><img src="{{item.icon}}"/><span>{{item.fileName}}</span></span>
             </template>
         </div>
-        <content select="*"></content>
         <select id="fileExtension">
-
-            <option selected value="hdc">Hero System Character</option>
+            <template is="dom-repeat" items="{{_file_extensions}}" as="fe">
+                <option value="{{fe.extension}}">{{fe.display_name}}</option>
+            </template>
         </select>
     </template>
 
@@ -58,57 +63,62 @@
                         return [];
                     }
                 },
-                google_authenticated: {
-                    type: Boolean,
-                    computed: '_compute_google_authenticated()'
+                _file_extensions: {
+                    type: Array,
+                    value: function () {
+
+                        return Polymer.dom(this).querySelectorAll('file-extension');
+                    }
                 },
-                _selected: {type: Number, value: 0},
+                _google_authenticated: {
+                    type: Boolean,
+                    value: false
+                },
+                _selected: {type: Number, value: 1},
                 google_client_id: {
                     type: String,
-                    reflectToAttribute: true
+                    notify: true
                 }
             },
 
             ready: function () {
-                var drive = this.$.file_list_api;
-                drive._start_google_file_lookup = this._start_google_file_lookup;
-                drive._google_load_error = this._google_api_load_error
-                drive.addEventListener('google-api-load', function (event) {
-                    console.log("Success:: " + event)
-                });
-                drive.addEventListener('google-api-load-error', function (event) {
-                    console.log("Failure:: " + event)
-                })
+                var drive = Polymer.dom(this.root).querySelector('#gdrive_api');
+
             },
 
-            _start_google_file_lookup: function (event) {
+            _set_authenticated_state: function (event) {
+                this._google_authenticated = ( event.type === "google-signin-aware-success");
+            },
+
+            _first_google_file_lookup: function (event) {
                 console.log("File Lookup started");
-                var fileSearch = drive.api.url.get({
+                var addFile = this;
+                var drive = event.target;
+                this._load_google_files(drive);
+                
+            },
+
+            _load_google_files: function(drive){
+                var fileSearch = drive.api.files.list({
                     q: "fileExtension = '" + this.$.fileExtension.value + "'"
                 });
 
-                fileSearch.execute(function (resp) {
-                    resp.body.items.forEach(function (item) {
-                        var newFile = {
-                            icon: item.iconLink,
-                            fileName: item.originalFilename
-                        };
-                        this.currentFiles.push(newFile);
+                fileSearch.execute(function(resp){
+
+                    resp.items.forEach(function(item){
+                        addFile.push('currentFiles', {icon: item.iconLink, fileName: item.originalFilename});
                     });
                 });
             },
-            _compute_google_authenticated: function () {
-                console.log("Authenticated");
-                return this.$.gdrive_api.signedIn && !this.$.gdrive_api.needAdditionalAuth;
-            },
+
             _google_api_load_error: function (event) {
                 console.log("Error");
-                if (event.error.code == 401) {
+                if (event.detail.error.code == 401) {
                     checkAuth();
                 } else {
                     console.log("Error");
                 }
-            },
+            }
         });
 
     </script>
