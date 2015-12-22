@@ -20,29 +20,32 @@
     <template>
         <paper-tabs selected="{{_selected}}">
             <paper-tab>Local</paper-tab>
-            <paper-tab>Google</paper-tab>
+            <paper-tab>                <google-signin width="wide"
+                                                      client-id="{{google_client_id}}"
+                                                      scopes="https://www.googleapis.com/auth/drive"
+                                                      on-google-signin-aware-success="_set_authenticated_state"
+                                                      on-google-signed-out="_set_authenticated_state"></google-signin>
+                </paper-tab>
+            <paper-tab>OneDrive</paper-tab>
+            <paper-tab>Box.net</paper-tab>
 
         </paper-tabs>
         <iron-pages selected="{{_selected}}">
-            <div>Local</div>
+            <div id="local_list">Local<br>
+
+                <input type="file" accept="{{_selected_extension}}">
+            </div>
             <div id="google_drive_list">
-                Google
-
-                <google-signin width="iconOnly"
-                               client-id="{{google_client_id}}"
-                               scopes="https://www.googleapis.com/auth/drive"
-                               on-google-signin-aware-success="_set_authenticated_state"
-                               on-google-signed-out="_set_authenticated_state"></google-signin>
-
-
                 <template id="file_list_api" is="dom-if" if="{{_google_authenticated}}">
-                    Authenticated
+
                     <google-client-loader id="gdrive_api"
                                           name="drive" version="v2"
                                           on-google-api-load="_google_file_lookup_eventhandler"
                                           on-google-api-load-error="_google_api_load_error"></google-client-loader>
                 </template>
             </div>
+            <div id="onedrive_list">One Drive</div>
+            <div id="boxnet_list">Box.net</div>
         </iron-pages>
         <div id="file-list">
             <template id="fileList" is="dom-repeat" items="{{currentFiles}}">
@@ -85,20 +88,22 @@
                     type: Boolean,
                     value: false
                 },
-                _selected: {type: Number, value: 1},
+                _selected: {type: Number, value: 0},
+                _selected_extension: {type: String},
                 google_client_id: {
                     type: String,
                     notify: true
                 }
             },
 
-            // TODO: remove only unselected buttons,
-            // TODO: filter local files based on extension
+            // TODO: Add single file support
+            // TODO: Add API to return files or URLs.
             // TODO: Add OneDrive functionality
             // TODO: Add Box.net functionality
 
             ready: function () {
                 var drive = Polymer.dom(this.root).querySelector('#gdrive_api');
+                this._selected_extension = "." + this.$.fileExtension.value;
 
             },
 
@@ -119,7 +124,14 @@
                     }
                 }
                 //this.splice('currentFiles', this.currentFiles.size);
-                this._load_google_files(this.$$("#gdrive_api"));
+                this._selected_extension = "." + this.$.fileExtension.value;
+                switch(this._selected){
+                    case 1:
+                            // Use Google API
+                        this._load_google_files(this.$$("#gdrive_api"));
+                        break;
+                }
+
             },
             _load_google_files: function (drive) {
                 console.log("File Lookup started");
