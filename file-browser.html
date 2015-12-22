@@ -1,6 +1,8 @@
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../paper-tabs/paper-tabs.html">
+<link rel="import" href="../paper-button/paper-button.html">
 <link rel="import" href="../iron-pages/iron-pages.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
 <link rel="import" href="../google-apis/google-apis.html">
 <link rel="import" href="../google-signin/google-signin.html">
 <link rel="import" href="file-extension.html">
@@ -8,6 +10,10 @@
 <dom-module id="file-browser">
 
     <style>
+        paper-button[toggles][active] {
+            background: #d1d1d1;
+        }
+
 
     </style>
 
@@ -23,28 +29,33 @@
                 Google
 
                 <google-signin width="iconOnly"
-                    client-id="{{google_client_id}}"
-                    scopes="https://www.googleapis.com/auth/drive"
-                    on-google-signin-aware-success="_set_authenticated_state"
-                    on-google-signed-out="_set_authenticated_state"></google-signin>
-
+                               client-id="{{google_client_id}}"
+                               scopes="https://www.googleapis.com/auth/drive"
+                               on-google-signin-aware-success="_set_authenticated_state"
+                               on-google-signed-out="_set_authenticated_state"></google-signin>
 
 
                 <template id="file_list_api" is="dom-if" if="{{_google_authenticated}}">
                     Authenticated
                     <google-client-loader id="gdrive_api"
-                        name="drive" version="v2"
-                        on-google-api-load="_first_google_file_lookup"
-                        on-google-api-load-error="_google_api_load_error"></google-client-loader>
+                                          name="drive" version="v2"
+                                          on-google-api-load="_google_file_lookup_eventhandler"
+                                          on-google-api-load-error="_google_api_load_error"></google-client-loader>
                 </template>
             </div>
         </iron-pages>
         <div id="file-list">
-            <template id="" is="dom-repeat" items="{{currentFiles}}">
-                <span><img src="{{item.icon}}"/><span>{{item.fileName}}</span></span>
+            <template id="fileList" is="dom-repeat" items="{{currentFiles}}">
+                <paper-item>
+                    <paper-button active="{{item.selected}}" toggles raised noink on-tap="_select_file">
+                        <iron-icon icon="add-circle-outline"></iron-icon>
+
+                        &nbsp;<span>{{item.fileName}}</span></paper-button>
+
+                </paper-item>
             </template>
         </div>
-        <select id="fileExtension">
+        <select id="fileExtension" on-change="_file_extension_change">
             <template is="dom-repeat" items="{{_file_extensions}}" as="fe">
                 <option value="{{fe.extension}}">{{fe.display_name}}</option>
             </template>
@@ -81,6 +92,11 @@
                 }
             },
 
+            // TODO: remove only unselected buttons,
+            // TODO: filter local files based on extension
+            // TODO: Add OneDrive functionality
+            // TODO: Add Box.net functionality
+
             ready: function () {
                 var drive = Polymer.dom(this.root).querySelector('#gdrive_api');
 
@@ -90,23 +106,33 @@
                 this._google_authenticated = ( event.type === "google-signin-aware-success");
             },
 
-            _first_google_file_lookup: function (event) {
-                console.log("File Lookup started");
-                var addFile = this;
-                var drive = event.target;
-                this._load_google_files(drive);
-                
+            _google_file_lookup_eventhandler: function (event) {
+                this._load_google_files(event.target);
             },
 
-            _load_google_files: function(drive){
+            _file_extension_change: function (event) {
+                var loopSize = this.currentFiles.length;
+                for(i=0;i < loopSize ;i++){
+                    var elem = this.shift('currentFiles');
+                    if(elem.selected){
+                        this.push('currentFiles', elem);
+                    }
+                }
+                //this.splice('currentFiles', this.currentFiles.size);
+                this._load_google_files(this.$$("#gdrive_api"));
+            },
+            _load_google_files: function (drive) {
+                console.log("File Lookup started");
+
+                var addFile = this;
                 var fileSearch = drive.api.files.list({
                     q: "fileExtension = '" + this.$.fileExtension.value + "'"
                 });
 
-                fileSearch.execute(function(resp){
+                fileSearch.execute(function (resp) {
 
-                    resp.items.forEach(function(item){
-                        addFile.push('currentFiles', {icon: item.iconLink, fileName: item.originalFilename});
+                    resp.items.forEach(function (item) {
+                        addFile.push('currentFiles', {icon: item.iconLink, fileName: item.originalFilename, selected:false});
                     });
                 });
             },
@@ -116,7 +142,17 @@
                 if (event.detail.error.code == 401) {
                     checkAuth();
                 } else {
-                    console.log("Error");
+                    console.log("Error: Google API failed to load (" + event.detail.error.code + ")");
+                }
+            },
+            _select_file: function(event){
+                var file = this.$.fileList.itemForElement(event.target);
+                file.selected = event.currentTarget.active;
+                var icon = event.currentTarget.queryEffectiveChildren("iron-icon");
+                if(file.selected){
+                    icon.setAttribute("icon", "remove-circle-outline");
+                }else{
+                    icon.setAttribute("icon", "add-circle-outline");
                 }
             }
         });
